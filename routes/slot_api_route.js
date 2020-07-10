@@ -290,6 +290,6 @@ route.delete("/agent_user/:id", async (req, res) => {
     
 });
 
-///////////////////// end tb_alert /////////////////
+///////////////////// end tb_agent_user /////////////////
 
 module.exports = route;
