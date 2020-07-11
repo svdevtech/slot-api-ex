@@ -6,6 +6,7 @@ const env = require('../env');
 const tb_alert = require('../models/tb_alert');
 const tb_agent_user = require('../models/tb_agent_user');
 const tb_user = require('../models/tb_user');
+const tb_games = require('../models/tb_games');
 
 let message = 'Success';
 let status = 2000;
@@ -198,6 +199,7 @@ route.delete("/alert/:id", async (req, res) => {
 ///////////////////// end tb_alert /////////////////////
 
 //////////////////////// tb_agent_user /////////////////
+//////////////////// test OK BY TOM//////////////////
 route.get("/agent_user", async (req, res) => {
     apilog('Get agent user all');    
     await tb_agent_user.find({}).then(
@@ -325,7 +327,8 @@ route.delete("/agent_user/:id", async (req, res) => {
 
 ///////////////////// end tb_agent_user /////////////////
 
-//////////////////////// tb_user ///////////////////////
+//////////////////////// tb_user /////////////////////////////////////////////////
+//////////////////// test OK BY TOM////////////////////
 route.get("/user", async (req, res) => {
     apilog('Get user all');
     await tb_user.find({}).then(
@@ -448,12 +451,252 @@ route.delete("/user/:id", async (req, res) => {
             }
         );
     } else {
-        apilog("delete agent user id error 2002 : No request params value." );
+        apilog("delete user id error 2002 : No request params value." );
         return res.json(ReturnSuccess(2002, "No request params value."));
     }
     
 });
 
-///////////////////// end tb_user /////////////////
+///////////////////// end tb_user ///////////////////////////////////////////////
+
+//////////////////////// tb_games ////////////////////////////////////////////////
+////////////////////////TEST OK BY TOM  ////////////////////////////////////////////////
+
+route.get("/games", async (req, res) => {
+    apilog('Get games all');
+    await tb_games.find({}).then(
+        function (result) {
+            //console.log("fine user result : " + result);
+            apiDebuglog("fine games result successfully" , result);
+            return res.json(ReturnSuccess(2000, result));
+        }
+    ).catch(
+        function (err) {
+            //console.log("fine user error 2001 : " + err);
+            apiErrorlog("fine games error 2001", err);
+            return res.json(ReturnErr(err));
+        }
+    );
+});
+
+route.get("/games/:id", async (req, res) => {
+    apilog('Get games by id');
+    apilog('params::==' + req.params);
+    const gId = req.params.id
+    if (gId) {
+        await tb_games.find({ _id: gId }).then(
+            function (result) {
+                //console.log("find user id " + uId + " result : " + result);
+                apiDebuglog("find games id " + gId + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                //console.log("find user id error 2001 : " + err);
+                apiErrorlog("find games id " + gId + " error 2001", err);
+                return res.json(ReturnErr(err));
+            }
+        );
+    } else {
+        apilog("find games id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+route.post("/games", async (req, res) => {
+    apilog('Post create games');
+    apilog('games::==' + req.body);
+    const games = req.body;
+
+    if (games) {
+
+        const Games = new tb_games(games);
+        await Games.save().then(
+            function (result) {
+                //console.log("user save successfully result : " + result);
+                apiDebuglog("games save successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                //console.log("user save error 2001 : " + err);
+                apiErrorlog("games save error 2001", err);
+                return res.json(ReturnErr(err));
+            }
+        );
+    } else {
+        apilog("games save error 2002 : No request body value.");
+        return res.json(ReturnSuccess(2002, "No request body value."));
+    }
+
+});
+
+route.put("/games/:id", async (req, res) => {
+    apilog('Put Update games');
+    apilog('body::==' + req.body);
+    apilog('params::==' + req.params);
+    const games = req.body;
+    const gId = req.params.id
+
+    if (games && gId) {
+
+        await tb_games.findByIdAndUpdate(gId, { $set: games }).then(
+            function (result) {
+                //console.log("agent user update result : " + result);
+                apiDebuglog("games update id " + gId + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                //console.log("agent user update error 2001 : " + err);
+                apiErrorlog("games update id " + gId + " error 2001", err);
+                return res.json(ReturnErr(err));
+            }
+        );
+    } else {
+        apilog("games update error 2002 : No request body & params value.");
+        return res.json(ReturnSuccess(2002, "No request body & params value."));
+    }
+
+});
+
+route.delete("/games/:id", async (req, res) => {
+    apilog('Delete games by id');
+    apilog('params::==' + req.params);
+    const gId = req.params.id
+    if (gId) {
+        await tb_games.findByIdAndDelete({ _id: gId }).then(
+            function (result) {
+                //console.log("delete agent user id result : " + result);
+                apiDebuglog("delete games id " + gId + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                //console.log("delete agent user id error 2001 : " + err);
+                apiErrorlog("delete games id " + gId + " error 2001", err);
+                return res.json(ReturnErr(err));
+            }
+        );
+    } else {
+        apilog("delete games id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+///////////////////// end tb_games ///////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 module.exports = route;
