@@ -17,6 +17,12 @@ app.use(bodyParser.json());
 //var port = env.port;
 var port_https = env.port_https;
 
+//var port = env.port;
+var port_https = env.port_https;
+
+var port = env.port;
+
+
 const sl_route = require('./routes/slot_api_route');
 const ssl = require('./routes/registed_ssl');
 
@@ -30,9 +36,6 @@ var options = {
   cert: fs.readFileSync('./cert/server.crt')
 };
 
-/* app.listen(port, () => {
-  console.log("[success] task 1 : listening on port " + port);
-}); */
 
 app.use((req, res, next) => {
   var err = new Error("ไม่พบ path ที่คุณต้องการ");
