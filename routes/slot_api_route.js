@@ -28,6 +28,9 @@ const tb_move_credit = require('../models/tb_move_credit');
 const tb_wallets = require('../models/tb_wallets');
 const tb_member_runno = require('../models/tb_member_runno');
 
+const tb_turnover = require('../models/tb_turnover');
+const tb_transections = require('../models/tb_transections');
+
 
 
 let message = 'Success';
@@ -1187,6 +1190,29 @@ route.get("/agent/:id", async (req, res) => {
         );
     } else {
         apilog("find agent id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+route.get("/listagentmaster/:agent_code", async (req, res) => {
+    apilog('Get agent by agent_code');
+    apilog('params::==' + req.params);
+    const agent_code = req.params.agent_code
+    if (agent_code) {
+        await tb_agent.find({ agent_lineup: agent_code }).then(
+            function (result) {
+                apiDebuglog("find agent by agent_code " + agent_code + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("find agent by agent_code " + agent_code + " error 2001", err);
+                return res.json(ReturnErr(err));
+            }
+        );
+    } else {
+        apilog("find agent by agent_code error 2002 : No request params value.");
         return res.json(ReturnSuccess(2002, "No request params value."));
     }
 
@@ -2772,5 +2798,281 @@ route.delete("/memberRunno/:id", async (req, res) => {
 });
 
 ///////////////////// end tb_member_runno ////////////////////////
+
+//////////////////////// tb_turnover ///////////////////////
+
+route.get("/turnover", async (req, res) => {
+    apilog('Get turnover all');
+    await tb_turnover.find({}).then(
+        function (result) {
+            apiDebuglog("find turnover result successfully" + result);
+            return res.json(ReturnSuccess(2000, result));
+        }
+    ).catch(
+        function (err) {
+            apiErrorlog("find turnover error 2001", err);
+            //return res.json(ReturnErr(err));
+            return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get turnover." }));
+        }
+    );
+});
+
+route.get("/turnover/:id", async (req, res) => {
+    apilog('Get turnover by id');
+    apilog('params::==' + req.params);
+    const uId = req.params.id
+    if (uId) {
+        await tb_turnover.find({ _id: uId }).then(
+            function (result) {
+                apiDebuglog("find turnover id " + uId + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("find turnover id " + uId + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get turnover id: " + uId }));
+            }
+        );
+    } else {
+        apilog("find turnover id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+route.get("/turnover/foragent/:agent_code", async (req, res) => {
+    apilog('Get turnover by id');
+    apilog('params::==' + req.params);
+    const agent_code = req.params.agent_code
+    if (agent_code) {
+        await tb_member_runno.find({ agent_code: agent_code }).then(
+            function (result) {
+                apiDebuglog("find turnover agent_code " + agent_code + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("find turnover agent_code " + agent_code + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get turnover agent_code: " + agent_code }));
+            }
+        );
+    } else {
+        apilog("find turnover id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+route.post("/turnover", async (req, res) => {
+    apilog('Post create turnover');
+    apilog('body::==' + req.body);
+    const turnover = req.body;
+
+    if (turnover) {
+        const Turnover = new tb_turnover(turnover);
+        await Turnover.save().then(
+            function (result) {
+                apiDebuglog("turnover save successfully", result);
+                return res.json(ReturnSuccess(2000, { id: result._id }));
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("turnover save error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for add turnover." }));
+            }
+        );
+    } else {
+        apilog("turnover save error 2002 : No request body value.");
+        return res.json(ReturnSuccess(2002, "No request body value."));
+    }
+
+});
+
+route.put("/turnover/:id", async (req, res) => {
+    apilog('Put Update turnover');
+    apilog('body::==' + req.body);
+    apilog('params::==' + req.params);
+    const turnover = req.body;
+    const uId = req.params.id
+
+    if (turnover && uId) {
+
+        await tb_turnover.findByIdAndUpdate(uId, { $set: turnover }).then(
+            function (result) {
+                //console.log("agent user update result : " + result);
+                apiDebuglog("turnover update id " + uId + " successfully", result);
+                return res.json(ReturnSuccess(2000, { id: result._id }));
+            }
+        ).catch(
+            function (err) {
+                //console.log("agent user update error 2001 : " + err);
+                apiErrorlog("turnover update id " + uId + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for update turnover id: " + uId }));
+            }
+        );
+    } else {
+        apilog("turnover update error 2002 : No request body & params value.");
+        return res.json(ReturnSuccess(2002, "No request body & params value."));
+    }
+
+});
+
+route.delete("/turnover/:id", async (req, res) => {
+    apilog('Delete turnover by id');
+    apilog('params::==' + req.params);
+    const uId = req.params.id
+    if (uId) {
+        await tb_turnover.findByIdAndDelete({ _id: uId }).then(
+            function (result) {
+                //console.log("delete agent user id result : " + result);
+                apiDebuglog("delete turnover id " + uId + " successfully", result);
+                return res.json(ReturnSuccess(2000, { id: result._id }));
+            }
+        ).catch(
+            function (err) {
+                //console.log("delete agent user id error 2001 : " + err);
+                apiErrorlog("delete turnover id " + uId + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for delete turnover id: " + uId }));
+            }
+        );
+    } else {
+        apilog("delete turnover id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+///////////////////// end tb_turnover ////////////////////////
+
+//////////////////////// tb_transections ///////////////////////
+
+route.get("/transections", async (req, res) => {
+    apilog('Get transections all');
+    await tb_transections.find({}).then(
+        function (result) {
+            apiDebuglog("find transections result successfully" + result);
+            return res.json(ReturnSuccess(2000, result));
+        }
+    ).catch(
+        function (err) {
+            apiErrorlog("find transections error 2001", err);
+            //return res.json(ReturnErr(err));
+            return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections." }));
+        }
+    );
+});
+
+route.get("/transections/:id", async (req, res) => {
+    apilog('Get transections by id');
+    apilog('params::==' + req.params);
+    const uId = req.params.id
+    if (uId) {
+        await tb_transections.find({ _id: uId }).then(
+            function (result) {
+                apiDebuglog("find transections id " + uId + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("find transections id " + uId + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections id: " + uId }));
+            }
+        );
+    } else {
+        apilog("find transections id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+route.post("/transections", async (req, res) => {
+    apilog('Post create transections');
+    apilog('body::==' + req.body);
+    const transections = req.body;
+
+    if (transections) {
+        const Transections = new tb_transections(transections);
+        await Transections.save().then(
+            function (result) {
+                apiDebuglog("transections save successfully", result);
+                return res.json(ReturnSuccess(2000, { id: result._id }));
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("transections save error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for add transections." }));
+            }
+        );
+    } else {
+        apilog("turnover save error 2002 : No request body value.");
+        return res.json(ReturnSuccess(2002, "No request body value."));
+    }
+
+});
+
+route.put("/transections/:id", async (req, res) => {
+    apilog('Put Update transections');
+    apilog('body::==' + req.body);
+    apilog('params::==' + req.params);
+    const transections = req.body;
+    const uId = req.params.id
+
+    if (transections && uId) {
+
+        await tb_transections.findByIdAndUpdate(uId, { $set: transections }).then(
+            function (result) {
+                //console.log("agent user update result : " + result);
+                apiDebuglog("transections update id " + uId + " successfully", result);
+                return res.json(ReturnSuccess(2000, { id: result._id }));
+            }
+        ).catch(
+            function (err) {
+                //console.log("agent user update error 2001 : " + err);
+                apiErrorlog("transections update id " + uId + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for update transections id: " + uId }));
+            }
+        );
+    } else {
+        apilog("transections update error 2002 : No request body & params value.");
+        return res.json(ReturnSuccess(2002, "No request body & params value."));
+    }
+
+});
+
+route.delete("/transections/:id", async (req, res) => {
+    apilog('Delete transections by id');
+    apilog('params::==' + req.params);
+    const uId = req.params.id
+    if (uId) {
+        await tb_transections.findByIdAndDelete({ _id: uId }).then(
+            function (result) {
+                //console.log("delete agent user id result : " + result);
+                apiDebuglog("delete transections id " + uId + " successfully", result);
+                return res.json(ReturnSuccess(2000, { id: result._id }));
+            }
+        ).catch(
+            function (err) {
+                //console.log("delete agent user id error 2001 : " + err);
+                apiErrorlog("delete transections id " + uId + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for delete transections id: " + uId }));
+            }
+        );
+    } else {
+        apilog("delete transections id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+///////////////////// end tb_transections ////////////////////////
 
 module.exports = route;
