@@ -8,7 +8,8 @@ const tb_turnover_Schema = new Schema({
     turn_date: String,
     turn_hours: String,
     amount: String,
-    game_code: String
+    game_code: String,
+    ts: Number
 })
 
 const Tb_TurnoverModel = mongoose.model('tb_turnover', tb_turnover_Schema)

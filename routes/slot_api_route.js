@@ -30,6 +30,7 @@ const tb_member_runno = require('../models/tb_member_runno');
 
 const tb_turnover = require('../models/tb_turnover');
 const tb_transections = require('../models/tb_transections');
+const { start } = require('repl');
 
 
 
@@ -1945,7 +1946,7 @@ route.get("/member/foragent/:agent_code", async (req, res) => {
             function (err) {
                 apiErrorlog("Get member foragent " + agent_code + " error 2001", err);
                 //return res.json(ReturnErr(err));
-                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get member foragent " + agent_code  }));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get member foragent " + agent_code }));
             }
         );
     } else {
@@ -2226,15 +2227,20 @@ route.put("/member/deposit/:id", async (req, res) => {
     apilog('body::==' + req.body);
     apilog('params::==' + req.params);
     const member = req.body;
-    const sId = req.params.id
+    const sId = req.params.id;
+    var trans_type = "api";
 
     if (member && sId) {
+        if (member.trans_type) {
+            trans_type = member.trans_type;
+        }
         await tb_member.find({ mem_username: sId }).then(
             function (result) {
                 apiDebuglog("Get info member id " + sId + " successfully", result);
                 //return res.json(ReturnSuccess(2000, result));
                 if (result.length > 0) {
                     const before_balance = result[0].mem_balance;
+                    const agent_code = result[0].agent_code;
                     apilog('member.mem_balance :' + member.mem_balance);
                     apilog('before_balance :' + before_balance);
                     var balance = (parseFloat(before_balance) + parseFloat(member.mem_balance)).toString();
@@ -2242,12 +2248,41 @@ route.put("/member/deposit/:id", async (req, res) => {
                     apilog('balance :' + balance);
                     tb_member.findByIdAndUpdate(result[0]._id, { $set: mem_balance }).then(
                         function (result) {
-                            apiDebuglog("member deposit id " + sId + " successfully", result);
-                            return res.json(ReturnSuccess(2000, { id: result._id, mem_username: result.mem_username, before_balance: before_balance, deposit_balance: member.mem_balance, amount: balance }));
+                            apiDebuglog("member " + sId + " deposit successfully", result);
+                            const trans = {
+                                amount: member.mem_balance,
+                                type: "deposit",
+                                username: sId,
+                                before_balance: before_balance,
+                                after_balance: balance,
+                                agent_code: agent_code,
+                                ts: Number(new Date()),
+                                tran_date_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                                note: member.note,
+                                user_admin: member.user_admin,
+                                tran_type: trans_type
+                            };
+
+                            const Transections = new tb_transections(trans);
+                            Transections.save().then(
+                                function (result) {
+                                    apiDebuglog("transections save successfully", result);
+                                    return res.json(ReturnSuccess(2000, { id: result._id, mem_username: result.mem_username, before_balance: before_balance, deposit_balance: member.mem_balance, amount: balance }));
+                                }
+                            ).catch(
+                                function (err) {
+                                    apiErrorlog("transections save error 2001", err);
+                                    //return res.json(ReturnErr(err));
+                                    //return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for deposit member id: " + sId + " => add transections." }));
+                                    return res.json(ReturnSuccess(2000, { id: result._id, mem_username: result.mem_username, before_balance: before_balance, deposit_balance: member.mem_balance, amount: balance }));
+                                }
+                            );
+
+
                         }
                     ).catch(
                         function (err) {
-                            apiErrorlog("member deposit id " + sId + " error 2001", err);
+                            apiErrorlog("member " + sId + " deposit  error 2001", err);
                             //return res.json(ReturnErr(err));
                             return res.json(ReturnUnSuccess(2001, { message: "Unsuccess deposit member id: " + sId }));
                         }
@@ -2259,9 +2294,93 @@ route.put("/member/deposit/:id", async (req, res) => {
             }
         ).catch(
             function (err) {
-                apiErrorlog("Get info member id " + sId + " error 2001", err);
+                apiErrorlog("member " + sId + " deposit error 2001", err);
                 //return res.json(ReturnErr(err));
-                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get inormation member id: " + sId }));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for member : " + sId + " deposit" }));
+            }
+        );
+
+    } else {
+        apilog("member deposit error 2002 : No request body & params value.");
+        return res.json(ReturnSuccess(2002, "No request body & params value."));
+    }
+
+});
+
+route.put("/member/withdraw/:id", async (req, res) => {
+    apilog('Put Update member');
+    apilog('body::==' + req.body);
+    apilog('params::==' + req.params);
+    const member = req.body;
+    const sId = req.params.id
+    var trans_type = "api";
+
+    if (member && sId) {
+        if (member.trans_type) {
+            trans_type = member.trans_type;
+        }
+        await tb_member.find({ mem_username: sId }).then(
+            function (result) {
+                apiDebuglog("Get info member id " + sId + " successfully", result);
+                //return res.json(ReturnSuccess(2000, result));
+                if (result.length > 0) {
+                    const before_balance = result[0].mem_balance;
+                    const agent_code = result[0].agent_code;
+                    apilog('member.mem_balance :' + member.mem_balance);
+                    apilog('before_balance :' + before_balance);
+                    var balance = (parseFloat(before_balance) - parseFloat(member.mem_balance)).toString();
+                    const mem_balance = { mem_balance: balance };
+                    apilog('balance :' + balance);
+                    tb_member.findByIdAndUpdate(result[0]._id, { $set: mem_balance }).then(
+                        function (result) {
+                            apiDebuglog("member " + sId + " withdraw successfully", result);
+                            const trans = {
+                                amount: member.mem_balance,
+                                type: "withdraw",
+                                username: sId,
+                                before_balance: before_balance,
+                                after_balance: balance,
+                                agent_code: agent_code,
+                                ts: Number(new Date()),
+                                tran_date_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+                                note: member.note,
+                                user_admin: member.user_admin,
+                                tran_type: trans_type
+                            };
+
+                            const Transections = new tb_transections(trans);
+                            Transections.save().then(
+                                function (result) {
+                                    apiDebuglog("transections save successfully", result);
+                                    return res.json(ReturnSuccess(2000, { id: result._id, mem_username: result.mem_username, before_balance: before_balance, withdraw_balance: member.mem_balance, amount: balance }));
+                                }
+                            ).catch(
+                                function (err) {
+                                    apiErrorlog("transections save error 2001", err);
+                                    //return res.json(ReturnErr(err));
+                                    //return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for deposit member id: " + sId + " => add transections." }));
+                                    return res.json(ReturnSuccess(2000, { id: result._id, mem_username: result.mem_username, before_balance: before_balance, withdraw_balance: member.mem_balance, amount: balance }));
+                                }
+                            );
+                            //return res.json(ReturnSuccess(2000, { id: result._id, mem_username: result.mem_username, before_balance: before_balance, deposit_balance: member.mem_balance, amount: balance }));
+                        }
+                    ).catch(
+                        function (err) {
+                            apiErrorlog("member " + sId + " withdraw error 2001", err);
+                            //return res.json(ReturnErr(err));
+                            return res.json(ReturnUnSuccess(2001, { message: "Unsuccess withdraw member : " + sId }));
+                        }
+                    );
+                } else {
+                    return res.json(ReturnUnSuccess(2001, { message: "can not find member : " + sId + "in system." }));
+                }
+
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("member " + sId + " withdraw error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for member : " + sId + " withdraw" }));
             }
         );
 
@@ -2378,6 +2497,30 @@ route.get("/wallets/:id", async (req, res) => {
                 apiErrorlog("find wallets id " + uId + " error 2001", err);
                 //return res.json(ReturnErr(err));
                 return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get wallet id: " + sId }));
+            }
+        );
+    } else {
+        apilog("find wallets id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+route.get("/wallets_byagent/:agent", async (req, res) => {
+    apilog('Get wallets by agent');
+    apilog('params::==' + req.params);
+    const agent = req.params.agent
+    if (agent) {
+        await tb_wallets.find({ agent_code: agent }).then(
+            function (result) {
+                apiDebuglog("find wallets by agent code " + agent + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("find wallets by agent code " + agent + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get wallet  by agent code: " + agent }));
             }
         );
     } else {
@@ -2846,7 +2989,7 @@ route.get("/turnover/foragent/:agent_code", async (req, res) => {
     apilog('params::==' + req.params);
     const agent_code = req.params.agent_code
     if (agent_code) {
-        await tb_member_runno.find({ agent_code: agent_code }).then(
+        await tb_turnover.find({ agent_code: agent_code }).then(
             function (result) {
                 apiDebuglog("find turnover agent_code " + agent_code + " successfully", result);
                 return res.json(ReturnSuccess(2000, result));
@@ -2860,6 +3003,159 @@ route.get("/turnover/foragent/:agent_code", async (req, res) => {
         );
     } else {
         apilog("find turnover id error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+route.post("/turnover/agent/:agent_code", async (req, res) => {
+    apilog('Get turnover by agent_code');
+    apilog('params::==' + req.params);
+    apilog('body::==' + req.body);
+    const turnover = req.body;
+    const agent_code = req.params.agent_code
+    if (agent_code) {
+        if (turnover.selecttime === 'All') {
+            await tb_turnover.find({ agent_code: agent_code }).then(
+                function (result) {
+                    apiDebuglog("find tb_turnover agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find tb_turnover agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get tb_turnover agent_code: " + agent_code }));
+                }
+            );
+        } else if (turnover.selecttime === 'Today') {
+            var startdate = moment().format('YYYY-MM-DD 00:00:00');
+            var startdate_stp = Number(new Date(startdate));
+            console.log('start date:' + startdate_stp);
+            await tb_turnover.find({ agent_code: agent_code, ts: { $gte: startdate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find tb_turnover agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get tb_turnover agent_code: " + agent_code }));
+                }
+            );
+        } else if (turnover.selecttime === 'Yesterday') {
+            var dateFormat = require('dateformat');
+            var date = new Date();
+            var enddate = new Date();
+            var enddate_stp = Number(new Date(dateFormat(enddate, 'yyyy-mm-dd 00:00:00')));
+            date.setDate(date.getDate() - 1);
+            console.log('yesterday date:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            //var startdate = moment().format('YYYY-MM-DD 00:00:00');
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            await tb_turnover.find({ agent_code: agent_code, ts: { $gte: startdate_stp,$lte: enddate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find tb_turnover agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get tb_turnover agent_code: " + agent_code }));
+                }
+            );
+        } else if (turnover.selecttime === 'ThisWeek') {
+            var dateFormat = require('dateformat');
+            var date = new Date(getMonday(new Date()));
+            console.log('get monday:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            await tb_turnover.find({ agent_code: agent_code, ts: { $gte: startdate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (turnover.selecttime === 'LastWeek') {
+            var dateFormat = require('dateformat');
+            var enddate = new Date(getMonday(new Date()));
+            var date = new Date();
+            console.log('get monday:' + dateFormat(enddate, 'yyyy-mm-dd 00:00:00'));
+            //console.log('start date:' + startdate_stp);
+            date.setDate(enddate.getDate() - 7);
+            console.log('start date:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            console.log('end date:' + dateFormat(enddate, 'yyyy-mm-dd 00:00:00'));
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            var enddate_stp = Number(new Date(dateFormat(enddate, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            console.log('end date:' + enddate_stp);
+            await tb_turnover.find({ agent_code: agent_code, ts: { $gte: startdate_stp,$lte: enddate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (turnover.selecttime === 'LastMonth') {
+            var dateFormat = require('dateformat');
+            var d = new Date();
+            var enddate = new Date(d.getFullYear() + '-' + (d.getMonth() + 1) + '-01');
+            //enddate.setDate(enddate.getDate() - 1);
+            console.log('end date:' + dateFormat(enddate, 'yyyy-mm-dd 00:00:00'));
+            var date = new Date(d.getFullYear() + '-' + d.getMonth() + '-01');
+            console.log('start date:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            var enddate_stp = Number(new Date(dateFormat(enddate, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            console.log('end date:' + enddate_stp);
+            await tb_turnover.find({ agent_code: agent_code, ts: { $gte: startdate_stp,$lte: enddate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (turnover.selecttime === 'ThisMonth') {
+            var dateFormat = require('dateformat');
+            var d = new Date();
+            var date = new Date(d.getFullYear() + '-' + (d.getMonth()+1) + '-01');
+            console.log('start date:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            await tb_turnover.find({ agent_code: agent_code, ts: { $gte: startdate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        }
+
+    } else {
+        apilog("find transections agent_code error 2002 : No request params value.");
         return res.json(ReturnSuccess(2002, "No request params value."));
     }
 
@@ -2990,6 +3286,191 @@ route.get("/transections/:id", async (req, res) => {
     }
 
 });
+
+route.get("/transections/agent/:agent_code", async (req, res) => {
+    apilog('Get transections by agent_code');
+    apilog('params::==' + req.params);
+    const agent_code = req.params.agent_code
+    if (agent_code) {
+        await tb_transections.find({ agent_code: agent_code }).then(
+            function (result) {
+                apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                return res.json(ReturnSuccess(2000, result));
+            }
+        ).catch(
+            function (err) {
+                apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                //return res.json(ReturnErr(err));
+                return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+            }
+        );
+    } else {
+        apilog("find transections agent_code error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+route.post("/transections/agent/:agent_code", async (req, res) => {
+    apilog('Get transections by agent_code');
+    apilog('params::==' + req.params);
+    apilog('body::==' + req.body);
+    const transections = req.body;
+    const agent_code = req.params.agent_code
+    if (agent_code) {
+        if (transections.selecttime === 'All') {
+            await tb_transections.find({ agent_code: agent_code }).then(
+                function (result) {
+                    apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (transections.selecttime === 'Today') {
+            var startdate = moment().format('YYYY-MM-DD 00:00:00');
+            var startdate_stp = Number(new Date(startdate));
+            console.log('start date:' + startdate_stp);
+            await tb_transections.find({ agent_code: agent_code, ts: { $gte: startdate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (transections.selecttime === 'Yesterday') {
+            var dateFormat = require('dateformat');
+            var date = new Date();
+            var enddate = new Date();
+            var enddate_stp = Number(new Date(dateFormat(enddate, 'yyyy-mm-dd 00:00:00')));
+            date.setDate(date.getDate() - 1);
+            console.log('yesterday date:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            //var startdate = moment().format('YYYY-MM-DD 00:00:00');
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            
+            console.log('start date:' + startdate_stp);
+            await tb_transections.find({ agent_code: agent_code, ts: { $gte: startdate_stp,$lte: enddate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (transections.selecttime === 'ThisWeek') {
+            var dateFormat = require('dateformat');
+            var date = new Date(getMonday(new Date()));
+            console.log('get monday:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            await tb_transections.find({ agent_code: agent_code, ts: { $gte: startdate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (transections.selecttime === 'LastWeek') {
+            var dateFormat = require('dateformat');
+            var enddate = new Date(getMonday(new Date()));
+            var date = new Date();
+            console.log('get monday:' + dateFormat(enddate, 'yyyy-mm-dd 00:00:00'));
+            //console.log('start date:' + startdate_stp);
+            date.setDate(enddate.getDate() - 7);
+            console.log('start date:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            console.log('end date:' + dateFormat(enddate, 'yyyy-mm-dd 00:00:00'));
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            var enddate_stp = Number(new Date(dateFormat(enddate, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            console.log('end date:' + enddate_stp);
+            await tb_transections.find({ agent_code: agent_code, ts: { $gte: startdate_stp,$lte: enddate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (transections.selecttime === 'LastMonth') {
+            var dateFormat = require('dateformat');
+            var d = new Date();
+            var enddate = new Date(d.getFullYear() + '-' + (d.getMonth() + 1) + '-01');
+            //enddate.setDate(enddate.getDate() - 1);
+            console.log('end date:' + dateFormat(enddate, 'yyyy-mm-dd 00:00:00'));
+            var date = new Date(d.getFullYear() + '-' + d.getMonth() + '-01');
+            console.log('start date:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            var enddate_stp = Number(new Date(dateFormat(enddate, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            console.log('end date:' + enddate_stp);
+            await tb_transections.find({ agent_code: agent_code, ts: { $gte: startdate_stp,$lte: enddate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        } else if (transections.selecttime === 'ThisMonth') {
+            var dateFormat = require('dateformat');
+            var d = new Date();
+            var date = new Date(d.getFullYear() + '-' + (d.getMonth()+1) + '-01');
+            console.log('yesterday date:' + dateFormat(date, 'yyyy-mm-dd 00:00:00'));
+            var startdate_stp = Number(new Date(dateFormat(date, 'yyyy-mm-dd 00:00:00')));
+            console.log('start date:' + startdate_stp);
+            await tb_transections.find({ agent_code: agent_code, ts: { $gte: startdate_stp } }).then(
+                function (result) {
+                    //apiDebuglog("find transections agent code " + agent_code + " successfully", result);
+                    return res.json(ReturnSuccess(2000, result));
+                }
+            ).catch(
+                function (err) {
+                    apiErrorlog("find transections agent_code " + agent_code + " error 2001", err);
+                    //return res.json(ReturnErr(err));
+                    return res.json(ReturnUnSuccess(2001, { message: "Unsuccess for get transections agent_code: " + agent_code }));
+                }
+            );
+        }
+
+    } else {
+        apilog("find transections agent_code error 2002 : No request params value.");
+        return res.json(ReturnSuccess(2002, "No request params value."));
+    }
+
+});
+
+function getMonday(d) {
+    d = new Date(d);
+    var day = d.getDay(),
+        diff = d.getDate() - day + (day == 0 ? -6 : 1); // adjust when day is sunday
+    return new Date(d.setDate(diff));
+}
 
 route.post("/transections", async (req, res) => {
     apilog('Post create transections');
