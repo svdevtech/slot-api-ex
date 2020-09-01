@@ -16,6 +16,7 @@ const tb_move_credit_Schema = new Schema({
     balance_update: String,
     move_ip: String,
     move_msg: String,
+    ts: Number,
 })
 
 const Tb_MoveCeditModel = mongoose.model('tb_move_credit', tb_move_credit_Schema)
