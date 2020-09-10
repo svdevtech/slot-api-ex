@@ -19,6 +19,7 @@ app.use('/public', express.static('./routes/public/'));
 app.use('/api', sl_route);
 
 app.listen(port, () => {
+  console.log("[success] Games API for External Intregration start.");
   console.log("[success] task 1 : listening on port " + port);
 });
 
