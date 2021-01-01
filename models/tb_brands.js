@@ -9,7 +9,11 @@ const tb_brands_Schema = new Schema({
     brand_img: String,
     brand_status: String,
     play_type: String,
-    play_url: String
+    play_url: String,
+    brand_sort: Number,
+    brand_img2: String,
+    brand_img3: String,
+    brand_type: String,
 })
 
 const Tb_BrandsModel = mongoose.model('tb_brand', tb_brands_Schema)
